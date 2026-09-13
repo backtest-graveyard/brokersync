@@ -1,0 +1,7 @@
+# Runs the sync once a day at 06:00 UTC alongside an existing Ghostfolio stack.
+services:
+  brokersync:
+    build: .
+    env_file: .env
+    entrypoint: ["sh", "-c", "while true; do python sync.py; sleep 86400; done"]
+    restart: unless-stopped
