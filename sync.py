@@ -40,6 +40,7 @@ LOT_DATE = os.environ.get("SYNC_LOT_DATE", "2024-01-01")   # date stamped on the
 STALE_HOURS = float(os.environ.get("STALE_HOURS", "36"))   # warn if SnapTrade's last sync is older
 
 snap = SnapTrade(consumer_key=CONSUMER_KEY, client_id=CLIENT_ID)
+DISABLED = []   # authorization ids SnapTrade reports as disabled this run
 
 
 def body(r):
@@ -54,6 +55,7 @@ def list_accounts():
     out = []
     for au in auths:
         if au.get("disabled"):
+            DISABLED.append(au.get("id"))
             log.info(f"! connection {au.get('brokerage', {}).get('name', au['id'])} is DISABLED "
                      f"(since {au.get('disabled_date')}). Reconnect it in SnapTrade; skipping.")
             continue
@@ -233,9 +235,10 @@ def main():
         gf_by_name = {a["name"]: a for a in gf.accounts()}
         log.info(f"Ghostfolio: {GF_URL}  ·  auth ok  ·  {len(gf_by_name)} existing accounts")
 
+    t0 = time.time()
     sa = list_accounts()
     log.info(f"SnapTrade: {len(sa)} accounts")
-    total, stale = 0, 0
+    total, stale, fresh = 0, 0, 0
     for acct in sa:
         aid, name = acct["id"], acct["name"]
         if only and aid != only:
@@ -246,6 +249,7 @@ def main():
             log.info(f"! {name}: STALE  ·  {note}  ·  data older than {STALE_HOURS:.0f}h, "
                      "the broker connection probably needs a reconnect. Skipping so a dead number is never written.")
             continue
+        fresh += 1
         pos = body(snap.account_information.get_all_account_positions(
             user_id=USER_ID, user_secret=USER_SECRET, account_id=aid)).get("results", [])
         snap_total = ((acct.get("balance") or {}).get("total") or {}).get("amount")
@@ -288,8 +292,9 @@ def main():
         skip_note = f"  skipped={','.join(skipped)}" if skipped else ""
         log.info(f"+ {name}: {imported} positions{cash_note}{skip_note}")
 
-    log.info(f"verify: {stale} stale account(s) skipped")
-    log.info(f"DONE total_positions_imported={total}")
+    log.info(f"verify: {fresh}/{fresh + stale} accounts fresh (<{STALE_HOURS:.0f}h)  ·  "
+             f"{stale} stale skipped  ·  {len(DISABLED)} connections disabled")
+    log.info(f"DONE total_positions_imported={total}  ·  {time.time() - t0:.1f}s")
 
 
 if __name__ == "__main__":
