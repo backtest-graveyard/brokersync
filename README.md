@@ -28,9 +28,9 @@ A broker can revoke a connection and SnapTrade will keep returning the last cach
 
 Docker: `docker compose -f docker-compose.example.yml up -d` runs it daily.
 
-## Hosted version
+## Status
 
-If you'd rather not run it: I run a hosted version for a yearly fee, with the first cohort onboarded by hand. Details on the site. Same code.
+A personal tool, shared as-is. I run it daily against my own accounts. Issues and pull requests are welcome; there is no paid version and no support promise.
 
 ## Not affiliated
 

@@ -239,6 +239,7 @@ def main():
     sa = list_accounts()
     log.info(f"SnapTrade: {len(sa)} accounts")
     total, stale, fresh = 0, 0, 0
+    claimed = set()   # Ghostfolio account names already written this run
     for acct in sa:
         aid, name = acct["id"], acct["name"]
         if only and aid != only:
@@ -257,6 +258,14 @@ def main():
         if not pos and (not snap_total or abs(float(snap_total)) < 0.01):
             log.info(f"- {name}: empty, skipping")
             continue
+        # Brokers reuse names ("Individual", "Robinhood Individual"). Two accounts
+        # mapped to one Ghostfolio account would each wipe the other's activities,
+        # because every run replaces an account's snapshot. Disambiguate the
+        # second and later ones with a stable suffix from the SnapTrade account id.
+        if name in claimed:
+            name = f"{name} ({aid[:8]})"
+            log.info(f"  name collision: using Ghostfolio account '{name}'")
+        claimed.add(name)
         if dry:
             continue
 
